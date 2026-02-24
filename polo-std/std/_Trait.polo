@@ -1,0 +1,13 @@
+pub trait _Container<T> {
+    fn at(&self: *Self, index: usize) -> *T;
+    fn len(&self: *Self) -> usize;
+    fn push(&self: *Self, item: T);
+    fn pop(&self: *Self) -> T;
+    fn remove(&self: *Self, index: usize) -> T;
+    fn insert(&self: *Self, index: usize, item: T);
+    fn clear(&self: *Self);
+    fn contains(&self: *Self, item: T) -> bool;
+    fn for_each<F>(&self: *Self, f: F) -> void;
+    fn map<F, U>(&self: *Self, f: F) -> *U;
+    // ...
+}

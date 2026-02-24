@@ -1,0 +1,44 @@
+// 结构体示例
+pub struct Point {
+    x: i32;
+    y: i32;
+} impl {
+    constructor(self: *Self, x: i32, y: i32) {
+        self.x = x;
+        self.y = y;
+    }
+
+    fn distance_from_origin(self: *Self) -> f64 {
+        return ((self.x * self.x + self.y * self.y) as f64).sqrt();
+    }
+
+    fn move(self: *Self, dx: i32, dy: i32) -> void {
+        self.x += dx;
+        self.y += dy;
+    }
+}
+
+pub enum Color {
+    Red,
+    Green,
+    Blue,
+    RGB(i32, i32, i32),
+}
+
+pub trait Drawable {
+    fn draw(self: *Self) -> void;
+}
+
+impl Point : Drawable {
+    fn draw(self: *Self) -> void {
+        // 绘制点的实现
+    }
+}
+
+fn main() -> i32 {
+    let p: Point = Point::new(3, 4);
+    let dist: f64 = p.distance_from_origin();
+    p.move(1, 1);
+    p.draw();
+    return 0;
+}
