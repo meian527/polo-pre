@@ -1,0 +1,32 @@
+import std::libc;
+
+trait _MemBase<T> {
+    pub fn get(self: *Self) -> *T;
+}
+
+struct SmartDrop<T> {
+    p: *T,
+} impl as _MemBase<T> {
+    pub constructor(self: *Self, ...) {
+        self.p = libc::malloc(size_of!(T)) as *T;
+        defer~ libc::free(self.p);
+    }
+
+    pub fn get(self: *Self) -> *T {
+        return self.p;
+    }
+}
+
+struct Rc<T> {
+    p: *T,
+    refs: usize,
+} impl as _MemBase<T> {
+    pub constructor(self: *Self, ...) {
+        self.p = new T(...);
+        self.refs = 1;
+    }
+    pub fn get(self: *Self) -> *T {
+        self.refs += 1;
+        return self.p;
+    }
+}

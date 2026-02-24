@@ -1,0 +1,12 @@
+// assembly shoule -lmsvcrt
+
+#!(extern = true)
+fn puts(s: str) -> i32;
+
+#!(target = "Windows", extern = true)
+fn ExitProcess(c: i32) -> void;
+
+fn main() -> i32 {
+    puts("Hello World");
+    return 0;
+}

@@ -1,0 +1,30 @@
+#!(target = "Windows", extern = true)
+fn GetCommandLineW() -> str;
+
+#!(target = "Windows", extern = true)
+fn CommandLineToArgvW(lpCmdLine: str, pNumArgs: *i32) -> str[];
+
+#!(target = "Windows", extern = true)
+fn GetEnvironmentStringsW() -> str;
+
+#!(target = "Windows", extern = true)
+fn ExitProcess(c: i32) -> void;
+
+fn main(argc: i32, argv: str[]) -> i32;
+
+#!(target = "Windows", extern = true)
+fn _start() -> void {
+    let hInstance: *void = -1 as *void;
+    let argc: i32 = 0 as i32;
+    let argv: str[] = CommandLineToArgvW(GetCommandLineW(), &argc);
+    let nShowCmd: i32 = 1 as i32;
+    ExitProcess(main(argc, argv));
+}
+
+#!(target = "Linux", extern = true)
+fn _start() -> void {
+    let argc: i32 = 0 as i32;
+    let argv: *str = 0 as *str;
+
+    syscall!(60, main(argc, argv));
+}
