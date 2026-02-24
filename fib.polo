@@ -1,0 +1,23 @@
+#!(extern = true)
+fn printf(format: str, num: i32) -> i32;
+#!(target = "Windows", extern = true)
+fn ExitProcess(code: i32) -> void;
+fn fib(n: i32) {
+	if n <= 1 {
+		return n;
+	} 
+	return fib(n - 1) + fib(n - 2);
+}
+#!(extern = true)
+fn clock() -> i64;
+
+fn main() -> i32{
+	let start: i64 = clock();
+	let n: i32 = fib(40 as i32);
+	let end: i64 = clock();
+	let time: i32 = (end - start) as i32;
+	printf("time: %dms\n", time);
+	printf("fib(40) = %d\n", n);
+	//return 0 as i32;
+	ExitProcess(0 as i32);
+}

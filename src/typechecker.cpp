@@ -184,7 +184,9 @@ std::shared_ptr<Type> TypeChecker::checkStatement(const ASTNodePtr& stmt) {
 void TypeChecker::checkVariableDecl(const std::shared_ptr<VariableDeclNode>& decl) {
     auto initType = checkExpression(decl->initializer);
     if (!decl->type->equals(initType)) {
-        THROW_ERROR("Type mismatch in variable declaration", decl->line, decl->col);
+        THROW_ERROR("Type mismatch in variable declaration"
+                    ": var `" + decl->name + "` type is (" + decl->type->to_string() + ") but expr type (" + initType->to_string() + ")"
+            , decl->line, decl->col);
     }
     addVariable(decl->name, decl->type, decl->line, decl->col);
 }
@@ -268,20 +270,24 @@ std::shared_ptr<Type> TypeChecker::checkPrimary(const ASTNodePtr& expr) {
         case NodeType::FLOAT:
         case NodeType::BOOLEAN:
         case NodeType::STRING:return e->ret_type;
-        case NodeType::IDENTIFIER:
-            return checkIdentifier(std::static_pointer_cast<IdentifierNode>(expr));
-        case NodeType::FUNCTION_CALL:
-            return checkFunctionCall(std::static_pointer_cast<FunctionCallNode>(expr));
-        case NodeType::BINARY_OP:
-            return checkBinaryOp(std::static_pointer_cast<BinaryOpNode>(expr));
-        case NodeType::MACRO_CALL:
-            // 宏调用由编译器特殊处理，返回 i32
-            return std::make_shared<Type>(TypeKind::I32);
-        case NodeType::UNARY:
-            return checkUnary(std::static_pointer_cast<UnaryOpNode>(expr));
-        default:
-            THROW_ERROR("Unknown expression type", expr->line, expr->col);
-            return nullptr;
+        default:break;
+    }
+    if (e->ret_type) return e->ret_type;
+    switch (e->type) {
+    case NodeType::IDENTIFIER:
+        return checkIdentifier(std::static_pointer_cast<IdentifierNode>(expr));
+    case NodeType::FUNCTION_CALL:
+        return checkFunctionCall(std::static_pointer_cast<FunctionCallNode>(expr));
+    case NodeType::BINARY_OP:
+        return checkBinaryOp(std::static_pointer_cast<BinaryOpNode>(expr));
+    case NodeType::MACRO_CALL:
+        // 宏调用由编译器特殊处理，返回 i32
+        return std::make_shared<Type>(TypeKind::I32);
+    case NodeType::UNARY:
+        return checkUnary(std::static_pointer_cast<UnaryOpNode>(expr));
+    default:
+        THROW_ERROR("Unknown expression type", expr->line, expr->col);
+        return nullptr;
     }
 
 }

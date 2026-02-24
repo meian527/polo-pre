@@ -94,7 +94,11 @@ void WatGen::gen(const ASTNodePtr &node) {
     }
     }
 }
-
+template<class T> T align_of_16(T num) {
+    auto tmp = num % 16;
+    if (tmp == 0)return num;
+    return num + (16 - tmp);
+}
 void WatGen::gen_program(const ASTNodePtr &node) {
     const auto n = std::static_pointer_cast<ProgramNode>(node);
     
@@ -137,7 +141,8 @@ void WatGen::gen_function(const ASTNodePtr &node) {
     // }
     output << ":\n";
 
-    
+
+    output << "    .align 16" << std::endl;
     // 保存栈帧
     output << "    push rbp" << std::endl;
     output << "    mov rbp, rsp" << std::endl;
@@ -165,7 +170,7 @@ void WatGen::gen_function(const ASTNodePtr &node) {
         output << "    leave" << std::endl;
         output << "    ret" << std::endl;
     }
-    backup_output += std::to_string(var_size + param_size) + "\n";
+    backup_output += std::to_string(align_of_16(var_size + param_size)) + "\n";
     std::ostringstream new_ss;
     new_ss << backup_output;
     new_ss << output.str();
@@ -269,32 +274,32 @@ void WatGen::gen_binary(const ASTNodePtr &node) {
     case BinaryOpType::EQ:
         output << "    cmp rbx, rax" << std::endl;
         output << "    setz al" << std::endl;
-        output << "    movzx rax, al" << std::endl;
+        //output << "    movzx rax, al" << std::endl;
         break;
     case BinaryOpType::NE:
         output << "    cmp rbx, rax" << std::endl;
         output << "    setnz al" << std::endl;
-        output << "    movzx rax, al" << std::endl;
+        //output << "    movzx rax, al" << std::endl;
         break;
     case BinaryOpType::LT:
         output << "    cmp rbx, rax" << std::endl;
         output << "    setl al" << std::endl;
-        output << "    movzx rax, al" << std::endl;
+        //output << "    movzx rax, al" << std::endl;
         break;
     case BinaryOpType::GT:
         output << "    cmp rbx, rax" << std::endl;
         output << "    setg al" << std::endl;
-        output << "    movzx rax, al" << std::endl;
+        //output << "    movzx rax, al" << std::endl;
         break;
     case BinaryOpType::LE:
         output << "    cmp rbx, rax" << std::endl;
         output << "    setle al" << std::endl;
-        output << "    movzx rax, al" << std::endl;
+        //output << "    movzx rax, al" << std::endl;
         break;
     case BinaryOpType::GE:
         output << "    cmp rbx, rax" << std::endl;
         output << "    setge al" << std::endl;
-        output << "    movzx rax, al" << std::endl;
+        //output << "    movzx rax, al" << std::endl;
         break;
     case BinaryOpType::AND:
         output << "    and rbx, rax" << std::endl;
@@ -450,7 +455,7 @@ void WatGen::gen_if_stmt(const ASTNodePtr &node) {
     gen(ifStmt->condition);
     
     // 如果条件为假，跳转到 else
-    output << "    test rax, rax" << std::endl;
+    output << "    test al, al" << std::endl;
     output << "    jz .L_else_" << elseLabel << std::endl;
     
     // then 分支
@@ -571,5 +576,3 @@ void WatGen::gen_macro_decl(const ASTNodePtr& node) {
     if (gen_) gen(macro->declaration);
     extern_flag = false;
 }
-
-

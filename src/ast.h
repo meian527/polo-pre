@@ -7,6 +7,8 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
+#include <pstl/algorithm_impl.h>
+#include <pstl/algorithm_impl.h>
 
 enum class TypeKind {
     I8,
@@ -192,8 +194,8 @@ public:
     ~ExprNode() override = default;
     explicit ExprNode(const NodeType type, const size_t line, const size_t col) : ASTNode(type, line, col) {}
 
-    void set_ret_type(const std::shared_ptr<Type>& new_ret_type) {
-        this->ret_type = new_ret_type;
+    void set_ret_type(const std::shared_ptr<Type> & new_ret_type) {
+        this->ret_type = new_ret_type->clone();
     }
     void set_ret_type(const Type& new_ret_type) {
         this->ret_type = std::make_shared<Type>(new_ret_type);
@@ -327,10 +329,10 @@ public:
     }
 };
 
-class IdentifierNode final: public ASTNode {
+class IdentifierNode final: public ExprNode {
 public:
     std::string name;
-    explicit IdentifierNode(const size_t line, const size_t col, std::string value) : ASTNode(NodeType::IDENTIFIER, line, col), name(std::move(value)) {}
+    explicit IdentifierNode(const size_t line, const size_t col, std::string value) : ExprNode(NodeType::IDENTIFIER, line, col), name(std::move(value)) {}
 };
 
 class TypeIdentifierNode final: public ASTNode {

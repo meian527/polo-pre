@@ -62,8 +62,8 @@ int main(int argc, char* argv[]) {
 
     writeFile(outputFile, asmCode);
 
-    std::cout << "Compilation successful!" << std::endl;
-    std::cout << "Output file: " << outputFile << std::endl;
+    //std::cout << "Compilation successful!" << std::endl;
+    //std::cout << "Output file: " << outputFile << std::endl;
 
     return 0;
 }

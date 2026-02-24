@@ -342,6 +342,7 @@ ASTNodePtr Parser::parsePrimary() {
         default:
             THROW_ERROR("Unexpected token: " + currentToken.value, currentToken.line, currentToken.column);
     }
+    return nullptr;
 }
 
 std::shared_ptr<FunctionCallNode> Parser::parseFunctionCall() {
