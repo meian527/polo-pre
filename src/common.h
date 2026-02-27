@@ -6,16 +6,8 @@
 #define POLO_COMPILER_PRE_COMMON_H
 #include <iostream>
 #include <string>
-static volatile bool has_err = false;
-static std::string P_TARGET =
-#if defined(WIN32) || defined(WIN64)
-    "Windows"
-#elif defined(__APPLE__)
-    "MacOS"
-#elif defined(__linux__)
-    "Linux"
-#endif
-;   // not set TARGET default is current system
+extern volatile bool has_err;
+extern std::string P_TARGET;
 
 // 带位置信息的错误报告工具函数
 inline void make_error(const std::string& message, size_t line, size_t col) {

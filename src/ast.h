@@ -24,7 +24,8 @@ enum class TypeKind {
     BOOL,
     STR,
     VOID,
-    ANY
+    ANY,
+    STRUCT,
 };
 
 enum class NodeType {
@@ -202,14 +203,20 @@ public:
     }
 };
 
+class StmtNode : public ASTNode {
+public:
+    ~StmtNode() override = default;
+    explicit StmtNode(const NodeType type, const size_t line, const size_t col) : ASTNode(type, line, col) {}
+};
+
 using ASTNodePtr = std::shared_ptr<ASTNode>;
 
-class ProgramNode final : public ASTNode {
+class ProgramNode final : public StmtNode {
 public:
     std::vector<ASTNodePtr> stmts;
 
     explicit
-    ProgramNode(const size_t line, const size_t col, std::vector<ASTNodePtr> stmts) : ASTNode(NodeType::PROGRAM, line, col),
+    ProgramNode(const size_t line, const size_t col, std::vector<ASTNodePtr> stmts) : StmtNode(NodeType::PROGRAM, line, col),
                                                                           stmts(std::move(stmts)) {}
 };
 
@@ -218,7 +225,7 @@ struct Parameter {
     std::shared_ptr<Type> type;
 };
 
-class FunctionNode final: public ASTNode {
+class FunctionNode final: public StmtNode {
 public:
     bool has_body{true};
     std::string name;
@@ -232,29 +239,29 @@ public:
         std::string name,
         std::vector<Parameter> parameters,
         std::shared_ptr<Type> returnType,
-        std::vector<ASTNodePtr> body) : ASTNode(NodeType::FUNCTION, line, col), name(std::move(name)),
+        std::vector<ASTNodePtr> body) : StmtNode(NodeType::FUNCTION, line, col), name(std::move(name)),
                                         parameters(std::move(parameters)), returnType(std::move(returnType)),
                                         body(std::move(body)) {}
 };
 
-class VariableDeclNode final: public ASTNode {
+class VariableDeclNode final: public StmtNode {
 public:
     std::string name;
     std::shared_ptr<Type> type;
     ASTNodePtr initializer;
 
     explicit VariableDeclNode(const size_t line, const size_t col, std::string name, std::shared_ptr<Type> type,
-                              ASTNodePtr initializer) : ASTNode(NodeType::VARIABLE_DECL, line, col),
+                              ASTNodePtr initializer) : StmtNode(NodeType::VARIABLE_DECL, line, col),
                                                         name(std::move(name)), type(std::move(type)),
                                                         initializer(std::move(initializer)) {}
 };
 
-class AssignmentNode final: public ASTNode {
+class AssignmentNode final: public StmtNode {
 public:
     std::string name;
     ASTNodePtr value;
 
-    explicit AssignmentNode(const size_t line, const size_t col, std::string name, ASTNodePtr value) : ASTNode(NodeType::ASSIGNMENT,
+    explicit AssignmentNode(const size_t line, const size_t col, std::string name, ASTNodePtr value) : StmtNode(NodeType::ASSIGNMENT,
         line, col), name(std::move(name)), value(std::move(value)) {}
 };
 
@@ -335,19 +342,19 @@ public:
     explicit IdentifierNode(const size_t line, const size_t col, std::string value) : ExprNode(NodeType::IDENTIFIER, line, col), name(std::move(value)) {}
 };
 
-class TypeIdentifierNode final: public ASTNode {
+class TypeIdentifierNode final: public StmtNode {
 public:
     std::string name;
-    explicit TypeIdentifierNode(const size_t line, const size_t col, std::string value) : ASTNode(NodeType::STRING, line, col), name(std::move(value)) {}
+    explicit TypeIdentifierNode(const size_t line, const size_t col, std::string value) : StmtNode(NodeType::STRING, line, col), name(std::move(value)) {}
 };
 
-class ReturnStmtNode final : public ASTNode {
+class ReturnStmtNode final : public StmtNode {
 public:
     ASTNodePtr expression;
-    explicit ReturnStmtNode(const size_t line, const size_t col, ASTNodePtr expression) : ASTNode(NodeType::RETURN_STMT, line, col), expression(std::move(expression)) {}
+    explicit ReturnStmtNode(const size_t line, const size_t col, ASTNodePtr expression) : StmtNode(NodeType::RETURN_STMT, line, col), expression(std::move(expression)) {}
 };
 
-class IfStmtNode final : public ASTNode {
+class IfStmtNode final : public StmtNode {
 public:
     ASTNodePtr condition;
     std::vector<ASTNodePtr> thenBody;
@@ -357,13 +364,13 @@ public:
                         ASTNodePtr condition, 
                         std::vector<ASTNodePtr> thenBody,
                         std::vector<ASTNodePtr> elseBody)
-        : ASTNode(NodeType::IF_STMT, line, col), 
+        : StmtNode(NodeType::IF_STMT, line, col),
           condition(std::move(condition)), 
           thenBody(std::move(thenBody)), 
           elseBody(std::move(elseBody)) {}
 };
 
-class ForStmtNode final : public ASTNode {
+class ForStmtNode final : public StmtNode {
 public:
     ASTNodePtr init;       // 初始化表达式（可选）
     ASTNodePtr condition;  // 条件表达式
@@ -375,23 +382,23 @@ public:
                          ASTNodePtr condition,
                          ASTNodePtr increment,
                          std::vector<ASTNodePtr> body)
-        : ASTNode(NodeType::FOR_STMT, line, col),
+        : StmtNode(NodeType::FOR_STMT, line, col),
           init(std::move(init)),
           condition(std::move(condition)),
           increment(std::move(increment)),
           body(std::move(body)) {}
 };
 
-class BreakStmtNode final : public ASTNode {
+class BreakStmtNode final : public StmtNode {
 public:
     explicit BreakStmtNode(const size_t line, const size_t col) 
-        : ASTNode(NodeType::BREAK_STMT, line, col) {}
+        : StmtNode(NodeType::BREAK_STMT, line, col) {}
 };
 
-class ContinueStmtNode final : public ASTNode {
+class ContinueStmtNode final : public StmtNode {
 public:
     explicit ContinueStmtNode(const size_t line, const size_t col) 
-        : ASTNode(NodeType::CONTINUE_STMT, line, col) {}
+        : StmtNode(NodeType::CONTINUE_STMT, line, col) {}
 };
 
 class MacroCallNode final : public ExprNode {
@@ -407,17 +414,16 @@ public:
           arguments(std::move(arguments)) {}
 };
 
-class MacroDeclNode final : public ASTNode{
+class MacroDeclNode final : public StmtNode{
 public:
     std::unordered_map<std::string, ASTNodePtr> equations;
     ASTNodePtr declaration;
     explicit MacroDeclNode(const size_t line, const size_t col, std::unordered_map<std::string, ASTNodePtr> equations, ASTNodePtr declaration) :
-        ASTNode(NodeType::MACRO_DECL, line, col), equations(std::move(equations)), declaration(std::move(declaration)) {}
+        StmtNode(NodeType::MACRO_DECL, line, col), equations(std::move(equations)), declaration(std::move(declaration)) {}
 };
 
-
 // 结构体声明节点
-class StructDeclNode final : public ASTNode {
+class StructDeclNode final : public StmtNode {
 public:
     bool is_public{false};
     std::string name;
@@ -426,13 +432,13 @@ public:
     explicit StructDeclNode(const size_t line, const size_t col,
                            std::string name,
                            std::vector<ASTNodePtr> fields)
-        : ASTNode(NodeType::STRUCT_DECL, line, col),
+        : StmtNode(NodeType::STRUCT_DECL, line, col),
           name(std::move(name)),
           fields(std::move(fields)) {}
 };
 
 // 字段声明节点
-class FieldDeclNode final : public ASTNode {
+class FieldDeclNode final : public StmtNode {
 public:
     std::string name;
     std::shared_ptr<Type> type;
@@ -440,13 +446,13 @@ public:
     explicit FieldDeclNode(const size_t line, const size_t col,
                           std::string name,
                           std::shared_ptr<Type> type)
-        : ASTNode(NodeType::FIELD_DECL, line, col),
+        : StmtNode(NodeType::FIELD_DECL, line, col),
           name(std::move(name)),
           type(std::move(type)) {}
 };
 
 // Impl声明节点
-class ImplDeclNode final : public ASTNode {
+class ImplDeclNode final : public StmtNode {
 public:
     std::string target_type;
     std::vector<ASTNodePtr> methods;
@@ -454,34 +460,13 @@ public:
     explicit ImplDeclNode(const size_t line, const size_t col,
                          std::string target_type,
                          std::vector<ASTNodePtr> methods)
-        : ASTNode(NodeType::IMPL_DECL, line, col),
+        : StmtNode(NodeType::IMPL_DECL, line, col),
           target_type(std::move(target_type)),
           methods(std::move(methods)) {}
 };
 
-// 方法声明节点
-class MethodDeclNode final : public ASTNode {
-public:
-    bool is_public{false}; // 默认private
-    std::string name;
-    std::vector<Parameter> parameters;
-    std::shared_ptr<Type> returnType;
-    std::vector<ASTNodePtr> body;
-
-    explicit MethodDeclNode(const size_t line, const size_t col,
-                           std::string name,
-                           std::vector<Parameter> parameters,
-                           std::shared_ptr<Type> returnType,
-                           std::vector<ASTNodePtr> body)
-        : ASTNode(NodeType::METHOD_DECL, line, col),
-          name(std::move(name)),
-          parameters(std::move(parameters)),
-          returnType(std::move(returnType)),
-          body(std::move(body)) {}
-};
-
 // 构造函数声明节点
-class ConstructorDeclNode final : public ASTNode {
+class ConstructorDeclNode final : public StmtNode {
 public:
     std::vector<Parameter> parameters;
     std::vector<ASTNodePtr> body;
@@ -489,7 +474,7 @@ public:
     explicit ConstructorDeclNode(const size_t line, const size_t col,
                                 std::vector<Parameter> parameters,
                                 std::vector<ASTNodePtr> body)
-        : ASTNode(NodeType::CONSTRUCTOR_DECL, line, col),
+        : StmtNode(NodeType::CONSTRUCTOR_DECL, line, col),
           parameters(std::move(parameters)),
           body(std::move(body)) {}
 };

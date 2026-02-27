@@ -80,6 +80,8 @@ ASTNodePtr Parser::parseStatement() {
             return parseBreakStmt();
         case TokenType::CONTINUE:
             return parseContinueStmt();
+        case TokenType::PUB:
+
         case TokenType::GRID:
             return parseMacroDecl();
         case TokenType::STRUCT:
@@ -115,18 +117,7 @@ std::shared_ptr<VariableDeclNode> Parser::parseVariableDecl() {
     
     return std::make_shared<VariableDeclNode>(line, col, name, type, initializer);
 }
-
-std::shared_ptr<FunctionNode> Parser::parseFunction() {
-    auto line = currentToken.line, col = currentToken.column;
-    expect(TokenType::FN);
-
-    if (currentToken.type != TokenType::IDENTIFIER) {
-        THROW_ERROR("Expected function name", currentToken.line, currentToken.column);
-    }
-
-    std::string name = currentToken.value;
-    advance();
-
+std::vector<Parameter> Parser::parseFunctionArgs() {
     expect(TokenType::LPAREN);
 
     std::vector<Parameter> parameters;
@@ -138,16 +129,30 @@ std::shared_ptr<FunctionNode> Parser::parseFunction() {
 
             std::string paramName = currentToken.value;
             advance();
-            
+
             expect(TokenType::COLON);
-            
+
             auto paramType = parseType();
-            
+
             parameters.push_back({paramName, paramType});
         } while (currentToken.type == TokenType::COMMA && (advance(), true));
     }
-    
+
     expect(TokenType::RPAREN);
+    return parameters;
+}
+std::shared_ptr<FunctionNode> Parser::parseFunction() {
+    auto line = currentToken.line, col = currentToken.column;
+    expect(TokenType::FN);
+
+    if (currentToken.type != TokenType::IDENTIFIER) {
+        THROW_ERROR("Expected function name", currentToken.line, currentToken.column);
+    }
+
+    std::string name = currentToken.value;
+    advance();
+
+    auto parameters = parseFunctionArgs();
     
     auto returnType = std::make_shared<Type>(TypeKind::I32);
     if (currentToken.type == TokenType::ARROW) {
@@ -614,7 +619,7 @@ std::shared_ptr<ImplDeclNode> Parser::parseImplDecl() {
         if (currentToken.type == TokenType::CONSTRUCTOR) {
             methods.push_back(parseConstructorDecl());
         } else {
-            methods.push_back(parseMethodDecl());
+            methods.push_back(parseFunction());
         }
     }
 
@@ -623,111 +628,20 @@ std::shared_ptr<ImplDeclNode> Parser::parseImplDecl() {
     return std::make_shared<ImplDeclNode>(line, col, target_type, methods);
 }
 
-std::shared_ptr<MethodDeclNode> Parser::parseMethodDecl() {
-    auto line = currentToken.line, col = currentToken.column;
 
-    bool is_public = false;
-    if (currentToken.type == TokenType::PUB) {
-        advance();
-        is_public = true;
-    } else {
-        is_public = false;
-    }
-
-    // 解析函数签名
-    expect(TokenType::FN);
-
-    if (currentToken.type != TokenType::IDENTIFIER) {
-        THROW_ERROR("Expected method name", currentToken.line, currentToken.column);
-    }
-
-    std::string name = currentToken.value;
-    advance();
-
-    expect(TokenType::LPAREN);
-
-    std::vector<Parameter> parameters;
-    if (currentToken.type != TokenType::RPAREN) {
-        do {
-            if (currentToken.type != TokenType::IDENTIFIER) {
-                THROW_ERROR("Expected parameter name", currentToken.line, currentToken.column);
-            }
-
-            std::string paramName = currentToken.value;
-            advance();
-
-            expect(TokenType::COLON);
-
-            auto paramType = parseType();
-
-            parameters.push_back({paramName, paramType});
-        } while (currentToken.type == TokenType::COMMA && (advance(), true));
-    }
-
-    expect(TokenType::RPAREN);
-
-    auto returnType = std::make_shared<Type>(TypeKind::VOID);
-    if (currentToken.type == TokenType::ARROW) {
-        advance();
-        returnType = parseType();
-    }
-
-    std::vector<ASTNodePtr> body;
-    if (currentToken.type == TokenType::SEMICOLON) {
-        advance(); // 抽象方法
-    } else {
-        expect(TokenType::LBRACE);
-
-        while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::EOF_TOKEN) {
-            ASTNodePtr statement = parseStatement();
-            if (statement) {
-                body.push_back(statement);
-            }
-        }
-
-        expect(TokenType::RBRACE);
-    }
-
-    auto method = std::make_shared<MethodDeclNode>(line, col, name, parameters, returnType, body);
-    method->is_public = is_public;
-    return method;
-}
 
 std::shared_ptr<ConstructorDeclNode> Parser::parseConstructorDecl() {
     auto line = currentToken.line, col = currentToken.column;
     expect(TokenType::CONSTRUCTOR);
 
-    expect(TokenType::LPAREN);
 
-    std::vector<Parameter> parameters;
-    if (currentToken.type != TokenType::RPAREN) {
-        do {
-            if (currentToken.type != TokenType::IDENTIFIER) {
-                THROW_ERROR("Expected parameter name", currentToken.line, currentToken.column);
-            }
-
-            std::string paramName = currentToken.value;
-            advance();
-
-            expect(TokenType::COLON);
-
-            auto paramType = parseType();
-
-            parameters.push_back({paramName, paramType});
-        } while (currentToken.type == TokenType::COMMA && (advance(), true));
-    }
-
-    expect(TokenType::RPAREN);
+    std::vector<Parameter> parameters = parseFunctionArgs();
 
     expect(TokenType::LBRACE);
 
     std::vector<ASTNodePtr> body;
-    while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::EOF_TOKEN) {
-        ASTNodePtr statement = parseStatement();
-        if (statement) {
-            body.push_back(statement);
-        }
-    }
+    while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::EOF_TOKEN)
+        if (ASTNodePtr statement = parseStatement()) body.push_back(statement);
 
     expect(TokenType::RBRACE);
 

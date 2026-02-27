@@ -17,6 +17,7 @@ set(SOURCES
     src/x64/x64gen.cpp
     src/x64/register.h
     src/x64/x64gen.hpp
+    src/common.cpp
 )
 # 创建编译器可执行文件
 add_executable(poloc ${SOURCES})

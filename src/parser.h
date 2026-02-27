@@ -21,6 +21,9 @@ private:
     
     ASTNodePtr parseStatement();
     std::shared_ptr<VariableDeclNode> parseVariableDecl();
+
+    std::vector<Parameter> parseFunctionArgs();
+
     std::shared_ptr<FunctionNode> parseFunction();
     std::shared_ptr<ReturnStmtNode> parseReturnStmt();
     [[nodiscard]] BinaryOpType tokenType2opType(TokenType type) const;
@@ -37,7 +40,6 @@ private:
 
     ASTNodePtr parseMulDivMod();
 
-    ASTNodePtr parseBinaryOp();
     ASTNodePtr parsePrimary();
     
     std::shared_ptr<FunctionCallNode> parseFunctionCall();
@@ -57,7 +59,6 @@ private:
     std::shared_ptr<StructDeclNode> parseStructDecl();
     std::shared_ptr<FieldDeclNode> parseFieldDecl();
     std::shared_ptr<ImplDeclNode> parseImplDecl();
-    std::shared_ptr<MethodDeclNode> parseMethodDecl();
     std::shared_ptr<ConstructorDeclNode> parseConstructorDecl();
     std::shared_ptr<MemberAccessNode> parseMemberAccess(const ASTNodePtr& object);
 

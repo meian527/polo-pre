@@ -130,7 +130,12 @@ void WatGen::gen_function(const ASTNodePtr &node) {
     has_return = false;
     stack_offset = 0;
     var_offsets.clear();
-    var_size = 8;
+#if defined(_WIN32) || defined(_WIN64)
+    var_size = 32;
+#else
+    var_size = 0;
+#endif
+
     if (extern_flag) {
         output << ".extern " << fn->name << std::endl;
     }
@@ -139,9 +144,9 @@ void WatGen::gen_function(const ASTNodePtr &node) {
     // for (const auto& p : fn->parameters) {
     //     output << "#" << Type::to_string(p.type->kind);
     // }
-    output << ":\n";
+    output << ":\n";\
 
-
+    bool should_save_frame = true;
     output << "    .align 16" << std::endl;
     // 保存栈帧
     output << "    push rbp" << std::endl;
@@ -247,16 +252,14 @@ void WatGen::gen_binary(const ASTNodePtr &node) {
     // 根据操作符生成指令
     switch (binop->op) {
     case BinaryOpType::ADD:
-        output << "    add rbx, rax" << std::endl;
-        output << "    mov rax, rbx" << std::endl;
+        output << "    add rax, rbx" << std::endl;
         break;
     case BinaryOpType::SUB:
         output << "    sub rbx, rax" << std::endl;
         output << "    mov rax, rbx" << std::endl;
         break;
     case BinaryOpType::MUL:
-        output << "    imul rbx, rax" << std::endl;
-        output << "    mov rax, rbx" << std::endl;
+        output << "    imul rax, rbx" << std::endl;
         break;
     case BinaryOpType::DIV:
         output << "    mov rax, rbx" << std::endl;
@@ -459,16 +462,16 @@ void WatGen::gen_if_stmt(const ASTNodePtr &node) {
     output << "    jz .L_else_" << elseLabel << std::endl;
     
     // then 分支
-    for (const auto& stmt : ifStmt->thenBody) {
+    for (const auto& stmt : ifStmt->thenBody)
         gen(stmt);
-    }
+
     output << "    jmp .L_end_" << endLabel << std::endl;
     
     // else 分支
     output << ".L_else_" << elseLabel << ":" << std::endl;
-    for (const auto& stmt : ifStmt->elseBody) {
+    for (const auto& stmt : ifStmt->elseBody)
         gen(stmt);
-    }
+
     
     output << ".L_end_" << endLabel << ":" << std::endl;
 }

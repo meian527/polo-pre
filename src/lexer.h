@@ -49,6 +49,7 @@ enum class TokenType {
     PUB,
     STATIC,
     CONSTRUCTOR,
+    DOT,
 };
 
 struct Token {

@@ -124,6 +124,9 @@ Token Lexer::getNextToken() {
         case ';':
             advance();
             return {TokenType::SEMICOLON, ";", line, column - 1};
+        case '.':
+            advance();
+            return {TokenType::DOT, ".", line, column - 1};
         case ':':
             advance();
             if (position < source.length() && currentChar() == ':') {
