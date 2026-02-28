@@ -92,10 +92,15 @@ void WatGen::gen(const ASTNodePtr &node) {
         gen_unary(node);
         break;
     }
+    case STRUCT_DECL: {
+
+        break;
+    }
+default: ;
     }
 }
 template<class T> T align_of_16(T num) {
-    auto tmp = num % 16;
+    T tmp = num % 16;
     if (tmp == 0)return num;
     return num + (16 - tmp);
 }
@@ -578,4 +583,11 @@ void WatGen::gen_macro_decl(const ASTNodePtr& node) {
     }
     if (gen_) gen(macro->declaration);
     extern_flag = false;
+}
+
+
+void WatGen::gen_struct_decl(const ASTNodePtr& node) {
+    const auto decl = std::static_pointer_cast<StructDeclNode>(node);
+    //x64 asm
+
 }

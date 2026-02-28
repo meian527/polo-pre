@@ -27,7 +27,9 @@ public:
     decl_gen_tool(var);
     decl_gen_tool(binary);
     decl_gen_tool(number);
-    decl_gen_tool(macro_decl);
+    decl_gen_tool(macro_decl)
+
+    void gen_struct_decl(const ASTNodePtr &node);;
     decl_gen_tool(float);
     decl_gen_tool(program);
     decl_gen_tool(string);

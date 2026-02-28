@@ -176,6 +176,8 @@ std::shared_ptr<Type> TypeChecker::checkStatement(const ASTNodePtr& stmt) {
         case NodeType::BREAK_STMT:
         case NodeType::CONTINUE_STMT:
             return std::make_shared<Type>(TypeKind::VOID);
+        case NodeType::STRUCT_DECL:
+
         default:
             return checkExpression(stmt);
     }

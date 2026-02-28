@@ -80,14 +80,20 @@ ASTNodePtr Parser::parseStatement() {
             return parseBreakStmt();
         case TokenType::CONTINUE:
             return parseContinueStmt();
-        case TokenType::PUB:
-
+        case TokenType::PUB: {
+            advance();
+            auto node = std::static_pointer_cast<StmtNode>(parseStatement());
+            node->is_pub = true;
+            return node;
+        }
         case TokenType::GRID:
             return parseMacroDecl();
         case TokenType::STRUCT:
             return parseStructDecl();
         case TokenType::IMPL:
             return parseImplDecl();
+        case TokenType::CONSTRUCTOR:
+            return parseConstructorDecl();
         default:
             ASTNodePtr expr = parseAssignment();
             expect(TokenType::SEMICOLON);
@@ -284,13 +290,13 @@ ASTNodePtr Parser::parseAssignment() {
         advance();
         ASTNodePtr right = parseAssignment();
 
-        if (left->type == NodeType::IDENTIFIER) {
-            return std::make_shared<AssignmentNode>(line, col, std::static_pointer_cast<IdentifierNode>(left)->name, right);
-        } else {
+        if (left->type == NodeType::IDENTIFIER)
+            left = std::make_shared<AssignmentNode>(line, col, std::static_pointer_cast<IdentifierNode>(left)->name, right);
+        else if (left->type == NodeType::MEMBER_ACCESS)
+            left = std::make_shared<MemberAssignNode>(line, col, left, right);
+        else
             THROW_ERROR("Left side of assignment must be an identifier", currentToken.line, currentToken.column);
-        }
     }
-    
     return left;
 }
 
@@ -319,14 +325,17 @@ ASTNodePtr Parser::parsePrimary() {
             return parseString();
         }
         case TokenType::IDENTIFIER: {
-            if (lexer.peek().type == TokenType::LPAREN) {
+            if (lexer.peek().type == TokenType::LPAREN)
                 return parseFunctionCall();
-            } else if (lexer.peek().type == TokenType::NOT) {
+            if (lexer.peek().type == TokenType::NOT)
                 return parseMacroCall();
-            }
-            else {
-                return parseIdentifier();
-            }
+            if (lexer.peek().type == TokenType::DOT)
+                return parseMemberAccess();
+            if (lexer.peek().type == TokenType::COL_COLON)
+                return parseNameSpaceVisit();
+
+            return parseIdentifier();
+
         }
         case TokenType::MINUS: {
             advance();
@@ -344,12 +353,45 @@ ASTNodePtr Parser::parsePrimary() {
             expect(TokenType::RPAREN);
             return expr;
         }
+        case TokenType::CONSTRUCTOR: {
+            advance();
+            if (currentToken.type == TokenType::LPAREN)
+                return std::make_shared<FunctionCallNode>(line, col, "constructor", parseFunctionCallArgs());
+        }
         default:
             THROW_ERROR("Unexpected token: " + currentToken.value, currentToken.line, currentToken.column);
     }
     return nullptr;
 }
 
+ASTNodePtr Parser::parseNameSpaceVisit() {
+    auto line = currentToken.line, col = currentToken.column;
+    if (currentToken.type != TokenType::IDENTIFIER)
+        THROW_ERROR("Expected namespace name", currentToken.line, currentToken.column);
+
+    ASTNodePtr name = std::make_shared<IdentifierNode>(line, col, currentToken.value);
+    advance();
+    if (currentToken.type == TokenType::COL_COLON) {
+        advance();
+        auto next = parsePrimary();
+        name = std::make_shared<NameSpaceVisitNode>(line, col, name, next);
+    }
+    return name;
+}
+
+std::vector<ASTNodePtr> Parser::parseFunctionCallArgs() {
+    expect(TokenType::LPAREN);
+
+    std::vector<ASTNodePtr> arguments;
+    if (currentToken.type != TokenType::RPAREN) {
+        do {
+            arguments.push_back(parseExpression());
+        } while (currentToken.type == TokenType::COMMA && (advance(), true));
+    }
+
+    expect(TokenType::RPAREN);
+    return arguments;
+}
 std::shared_ptr<FunctionCallNode> Parser::parseFunctionCall() {
     auto line = currentToken.line, col = currentToken.column;
     if (currentToken.type != TokenType::IDENTIFIER) {
@@ -358,16 +400,8 @@ std::shared_ptr<FunctionCallNode> Parser::parseFunctionCall() {
 
     std::string name = currentToken.value;
     advance();
-    expect(TokenType::LPAREN);
     
-    std::vector<ASTNodePtr> arguments;
-    if (currentToken.type != TokenType::RPAREN) {
-        do {
-            arguments.push_back(parseExpression());
-        } while (currentToken.type == TokenType::COMMA && (advance(), true));
-    }
-    
-    expect(TokenType::RPAREN);
+    std::vector<ASTNodePtr> arguments = parseFunctionCallArgs();
     
     return std::make_shared<FunctionCallNode>(line, col, name, arguments);
 }
@@ -616,11 +650,10 @@ std::shared_ptr<ImplDeclNode> Parser::parseImplDecl() {
 
     std::vector<ASTNodePtr> methods;
     while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::EOF_TOKEN) {
-        if (currentToken.type == TokenType::CONSTRUCTOR) {
-            methods.push_back(parseConstructorDecl());
-        } else {
-            methods.push_back(parseFunction());
-        }
+        if (auto decl = parseStatement();
+            decl && (decl->type == NodeType::FUNCTION || decl->type == NodeType::CONSTRUCTOR_DECL))
+                methods.push_back(decl);
+        else THROW_ERROR("Expected method or constructor declaration", currentToken.line, currentToken.column);
     }
 
     expect(TokenType::RBRACE);
@@ -648,15 +681,24 @@ std::shared_ptr<ConstructorDeclNode> Parser::parseConstructorDecl() {
     return std::make_shared<ConstructorDeclNode>(line, col, parameters, body);
 }
 
-std::shared_ptr<MemberAccessNode> Parser::parseMemberAccess(const ASTNodePtr& object) {
+std::shared_ptr<MemberAccessNode> Parser::parseMemberAccess() {
+    auto var = parseIdentifier();
     auto line = currentToken.line, col = currentToken.column;
+    if (currentToken.type != TokenType::DOT)
+        THROW_ERROR("Expected member access", currentToken.line, currentToken.column);
 
-    if (currentToken.type != TokenType::IDENTIFIER) {
-        THROW_ERROR("Expected member name", currentToken.line, currentToken.column);
-    }
-
-    std::string member = currentToken.value;
     advance();
+    if (currentToken.type != TokenType::IDENTIFIER)
+        THROW_ERROR("Expected member name", currentToken.line, currentToken.column);
+    auto node = std::make_shared<MemberAccessNode>(line, col, var, parsePrimary());
 
-    return std::make_shared<MemberAccessNode>(line, col, object, member);
+    if (currentToken.type == TokenType::DOT) {
+        advance();
+        line = currentToken.line, col = currentToken.column;
+        if (currentToken.type != TokenType::IDENTIFIER)
+            THROW_ERROR("Expected member name", currentToken.line, currentToken.column);
+
+        node = std::make_shared<MemberAccessNode>(line, col, node, parsePrimary());
+    }
+    return node;
 }

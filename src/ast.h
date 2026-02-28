@@ -25,7 +25,6 @@ enum class TypeKind {
     STR,
     VOID,
     ANY,
-    STRUCT,
 };
 
 enum class NodeType {
@@ -56,7 +55,7 @@ enum class NodeType {
     VARIANT_DECL,
     METHOD_DECL,
     CONSTRUCTOR_DECL,
-    MEMBER_ACCESS
+    MEMBER_ACCESS, MEMBER_ASSIGN, NAME_SPACE_VISIT
 };
 
 enum class BinaryOpType {
@@ -149,6 +148,30 @@ public:
         result->name = name;
         return result;
     }
+    [[nodiscard]] virtual size_t size() const {
+        if (is_ptr) return 8;
+        switch (kind) {
+        case TypeKind::BOOL:
+        case TypeKind::I8:
+        case TypeKind::U8:
+            return 1;
+        case TypeKind::I16:
+        case TypeKind::U16:
+            return 2;
+        case TypeKind::I32:
+        case TypeKind::U32:
+        case TypeKind::F32:
+            return 4;
+        case TypeKind::I64:
+        case TypeKind::U64:
+        case TypeKind::F64:
+        case TypeKind::STR:
+            return 8;
+        case TypeKind::VOID:
+        default:
+            return 0;
+        }
+    }
 };
 class ExtType final : public Type {
 public:
@@ -166,7 +189,7 @@ public:
         this->kind = other.kind;
     }
 
-    [[nodiscard]] virtual std::string to_string() const override {
+    [[nodiscard]] std::string to_string() const override {
         std::string result = basic->to_string();
         if (is_ptr) result = "*" + result;
         if (is_arr) result = "[]";
@@ -179,6 +202,33 @@ public:
         result->basic = basic->clone();
         return result;
     }
+
+    [[nodiscard]] size_t size() const override {
+        if (is_ptr) return 8;
+        return basic->size();
+    }
+};
+class StructType final : public Type {
+public:
+    std::unordered_map<std::string, std::shared_ptr<Type>> fields;
+    [[nodiscard]] std::string to_string() const override {
+        std::string result = name + " { ";
+        for (auto& [name, type] : fields)
+            result += name + ": " + type->to_string() + " , ";
+        result += " }\n";
+        return result;
+    }
+    StructType() = default;
+    [[nodiscard]] std::shared_ptr<Type> clone() const override {
+        auto result = std::make_shared<StructType>();
+        result->name = name;
+        result->fields = fields;
+        return result;
+    }
+    StructType(const StructType& other) {
+        *this = *std::static_pointer_cast<StructType>(other.clone());
+    }
+
 };
 
 class ASTNode {
@@ -205,6 +255,7 @@ public:
 
 class StmtNode : public ASTNode {
 public:
+    bool is_pub{false};
     ~StmtNode() override = default;
     explicit StmtNode(const NodeType type, const size_t line, const size_t col) : ASTNode(type, line, col) {}
 };
@@ -255,7 +306,13 @@ public:
                                                         name(std::move(name)), type(std::move(type)),
                                                         initializer(std::move(initializer)) {}
 };
-
+class NameSpaceVisitNode final : public StmtNode {
+public:
+    ASTNodePtr last;
+    ASTNodePtr expr;
+    explicit NameSpaceVisitNode(const size_t line, const size_t col, ASTNodePtr last, ASTNodePtr name) : StmtNode(NodeType::NAME_SPACE_VISIT, line, col),
+        last(std::move(last)), expr(std::move(name)){}
+};
 class AssignmentNode final: public StmtNode {
 public:
     std::string name;
@@ -263,6 +320,13 @@ public:
 
     explicit AssignmentNode(const size_t line, const size_t col, std::string name, ASTNodePtr value) : StmtNode(NodeType::ASSIGNMENT,
         line, col), name(std::move(name)), value(std::move(value)) {}
+};
+class MemberAssignNode final: public StmtNode {
+public:
+    ASTNodePtr member;
+    ASTNodePtr value;
+    explicit MemberAssignNode(const size_t line, const size_t col, ASTNodePtr member, ASTNodePtr value) : StmtNode(NodeType::MEMBER_ASSIGN, line, col),
+        member(std::move(member)), value(std::move(value)) {}
 };
 
 class BinaryOpNode final: public ExprNode {
@@ -483,14 +547,14 @@ public:
 class MemberAccessNode final : public ExprNode {
 public:
     ASTNodePtr object;
-    std::string member;
+    ASTNodePtr expr;
 
     explicit MemberAccessNode(const size_t line, const size_t col,
                              ASTNodePtr object,
-                             std::string member)
+                             ASTNodePtr member)
         : ExprNode(NodeType::MEMBER_ACCESS, line, col),
           object(std::move(object)),
-          member(std::move(member)) {}
+          expr(std::move(member)) {}
 };
 
 #endif // AST_H

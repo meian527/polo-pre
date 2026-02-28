@@ -41,7 +41,11 @@ private:
     ASTNodePtr parseMulDivMod();
 
     ASTNodePtr parsePrimary();
-    
+
+    ASTNodePtr parseNameSpaceVisit();
+
+    std::vector<ASTNodePtr> parseFunctionCallArgs();
+
     std::shared_ptr<FunctionCallNode> parseFunctionCall();
     std::shared_ptr<IdentifierNode> parseIdentifier();
     std::shared_ptr<NumberNode> parseNumber();
@@ -60,7 +64,7 @@ private:
     std::shared_ptr<FieldDeclNode> parseFieldDecl();
     std::shared_ptr<ImplDeclNode> parseImplDecl();
     std::shared_ptr<ConstructorDeclNode> parseConstructorDecl();
-    std::shared_ptr<MemberAccessNode> parseMemberAccess(const ASTNodePtr& object);
+    std::shared_ptr<MemberAccessNode> parseMemberAccess();
 
 };
 
